@@ -1,0 +1,7 @@
+DFS                 BFS
+------------------------
+DEEP                WIDE
+Pre,Post,Inorder    LevelOrder
+FAR                 Near
+Stack               Queue
+Backtracking        Shortest Distance

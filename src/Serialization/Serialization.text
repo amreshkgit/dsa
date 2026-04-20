@@ -1,0 +1,31 @@
+Static variables belong to a class and not to any individual instance.
+The concept of serialization is concerned with the object's current state.
+Only data associated with a specific instance of a class is serialized,
+therefore static member fields are ignored during serialization.
+
+Transient Variable
+Using Transient variable we can restrict the instance variable from Serializing. So transient variable will
+be ignored during serialization process.
+
+Static Keyword
+Serialization will happen only for variables specific to particular instance, but static variables is not specific to any instance.
+So static variables won’t participate in Serialization process.
+
+Rules for Transient Variable vs Static Variable
+1. Transient variable will be ignored during serialization.
+2. Static variable won’t even participate in Serialization.
+3. Static variable will be serialized if the value is initialized during declaration itself.
+4. If a variable contains both transient and static keyword, also if the value is initialized during declaration,
+then it will be serialized. Because here transient modifier will be ignored and static modifier will take over the actions.
+5. Final variable will be serialized.
+6. If a variable contains both final and transient keyword, then it will be serialized. Because here transient modifier
+will be ignored and final modifier will take over the actions.
+
+FAQ
+---
+Is constructor called during serialization in java ?
+It depends on whether our object has implemented Serializable or Externalizable.
+If Serializable has been implemented - constructor is not called during DeSerialization process.
+
+Why default constructor is not called at the time of serialization?
+https://javabypatel.blogspot.com/2017/05/why-default-constructor-not-called-in-deserialization-java.html

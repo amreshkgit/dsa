@@ -1,0 +1,4 @@
+Given array 40,10,30,50,60,15 --> convert into a Heap O(n) with buildHeap using heapify --> swap the last to
+first element because buildHeap will give array in which largest will be at first index --> call heapify with
+passing heapify(arr,0,heapSize) heapSize will not include 60 meaning heapify will be called on array
+(15,50,30,40,10)|60 excluding 60 it will continue till element has been traverse
