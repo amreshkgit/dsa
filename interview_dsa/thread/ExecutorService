@@ -1,0 +1,265 @@
+The executor service creates and maintains a reusable pool of threads for executing submitted tasks.
+
+Java provides the 4 types of Thread pools
+-----------------------------------------
+
+1. Fixed thread pool --  LinkedBlockingQueue -- Threads are limited but task are not limited
+2. CachedThreadPool  -- synchronousQueue -- Threads are not limited/unbounded - as soon as task arrive to queue it get empty queue and assign a thread
+3. ScheduledThreadPool -- DelayedWorkQueue special queue that deals with schedule/time delays
+4. SingleThreadedExecutor -- LinkedBlockingQueue
+
+1. Fixed thread pool
+  To be created using Executors.newFixedThreadPool(4);
+
+2. CachedThreadPool
+  Here you don't have fixed number of thread and you don't have queue to hold the number of task. Instead queue is replaced by
+  something called Synchronous queue. which has space to have only one task. Every time you submit a particular task, it will hold the
+  task at the queue location and it will search for any of the thread which are already created and which are free to operate or execute
+  the task.if no such thread is available then it will create the new thread it will add to the pool to execute the task.
+  so, now you imagine you have 100 task then it will create the 100 thread if all thread all busy. it has also an ability to kill those
+  thread which ideal for 60 seconds. so that's when slowly thread pool size will start shrinking.
+  Code for this as below
+  ExecutorService service = Executor.newCachedThreadPool();
+
+3. ScheduledThreadPool
+   Here specifically for the task you want to scheduled after a certain delay.Let say you want to perform some checks such as
+   security checks or logging checks or some other kind of checks after every 10 sec.
+   you have three method
+   1. Service.schedule -- Task to execute at certain delay (Task to run after 10 seconds delay)
+   2. Service.scheduleAtFixedRate -- Task which can keep triggering at every 10 secs.
+   3. Service.scheduleAtFixedDelay -- It will complete the task say it takes 15 sec after that it will wait for 10 sec
+   then schedule instance of the task.(or task to run repeatedly 10 seconds after previous task completes)
+
+4. SingleThreadedExecutor
+   it exactly same as fixedThreadPool executor but in this case it has only one pool size. Only one thread fetching the task from
+   blocking queue and running it. even if thread gets killed due some exception or so then it will recreates the thread to execute
+   the next task.
+   This thread pool will useful when you want ensure the task1 executes before task2 or want to maintain some kind of order then
+   it will useful.So the task will run sequentially.
+
+Difference between newSingleThreadExecutor and newFixedThreadPool(1):
+You can not change thread pool size of executors returned by newSingleThreadExecutor but you can change thread pool size of
+executors returned by newFixedThreadPool(1) by calling setCorePoolSize() of the class ThreadPoolExecutor.
+
+Callable and Futures
+-------------------
+What if task want to return something. There is no way that i can return something from the existing run() method.
+So, there is Interface called callable which is created exactly for this purpose.So instead of Runnable
+we can implement callable.
+ static class Task implements Callable<Integer>{ that what type of value you are going to return
+        @Override
+        public Integer call(){
+          return new Random().nextInt();
+        }
+ }
+
+Future is nothing but a placeholder for the value which will arrive in sometime in the future. How much in time you can never be sure.
+that completely based on the how time call() method takes.
+As soon as we submit the callable task the thread pool gives a placeholder which doesn't contain any value. After some point of time
+which completely based on how you call method implemented , once result is ready with the thread pool it will update the same
+placeholder which it gave you with actual value. Now, when this callable method is being run if your main method calls the f.get()
+which is blocking method. Main thread immediately goes into blocked state. because at this point thread pool has not completed the
+method and not ready with result yet.That is why main thread goes into blocked state.and once thread sets the value of the placeholder
+that is when call is completed. Then the main thread which was blocked goes in to runnable state and can be run subsequently
+run by the JVM.
+
+Consider case when you submit the callable task in loop then it can block the main thread even though future return for some other
+index but main thread wait until it doesn't return thr value for first index.
+Hence, we can overcome with some timeout scenario.
+Future has some get overloaded method which has time out facility.
+future.get(timeout:1,TimeUnit.SECONDS);
+or
+you can cancel the task
+future.cancel()//make sure you do before the task execution other it will do anything
+future.isCancelled() // Return true if task was cancelled
+future.isDone()//Return true if task is completed
+
+How to avoid DeadLock?
+---------------------
+. Detect at runtime using thread dumps - Kill -3 37320
+When ‘kill -3’ option is used thread dump is sent to standard error stream. If you are running your application in tomcat,
+thread dump will be sent in to <TOMCAT_HOME>/logs/catalina.out file.
+. Consistent ordering of lock acquisition helps avoid deadlock
+. Using timeout for lock acquisition can also help
+
+Java 8 Completable Future
+-------------------------
+What is used for
+To perform possible asynchronous (non-blocking) computation and trigger dependent computation which also be asynchronous.
+
+Reentrant Lock
+--------------
+- Locks are explicit where as synchronized is also nothing but lock is implicit
+- Locks allow locking / unlocking in any scope and in any order - you lock in any method an unlock in other method
+- Ability to tryLock and tryLock(timeout) - few extra method
+
+Reentrant lock allows to call lock method multiple times on the same object.of course lock call must match with unlock call.
+consider the scenario when your method calls recursively.Let say thread t1 has the lock and again reentering the same block which
+it has the access. that is why is called as reentrant lock.it will acquired the lock again since it is already a owner of the lock.
+behind the scene it hold count(getHoldCount()) gets incremented.
+
+lock = new ReentrantLock(true) The reentrant lock becomes a fair lock. Let say there are 4 thread which wants to acquire a lock.
+and Thread t1 arrives earlier and acquire the lock. In this case t1 gets the lock and other three thread will get into wait state.
+In the wait state it will put into wait queue.Once Thread t1 calls the unlock method.it release the lock and any of the thread will
+get a chance to acquire the lock. Since, thread t2 waited to longest for acquiring the lock. So, Reentrant Lock will guarantee that
+thread t2 will get the chance to acquire among t3 and t4 thread. so it is first come first serve basis. By default reentrant lock are unfair.
+
+              Advantage                     Disadvantage
+Fair lock   - Equal chance for all thread   - Slower
+Unfair lock - Faster(more throughput)       - possible thread starvation
+Throughput - the rate at which something is processed.
+
+Condition(The wait notify alternative)
+-------------------------------------
+Condition is similar to wait and notify to signaling the thread. we can create the condition and call signal on the created
+condition object.
+
+Yield
+------
+The yield method gives other threads of the same priority a chance to run. If no equal-priority threads are Runnable, the yield is ignored.
+
+Atomic vs Volatile
+------------------
+Volatile is used for visibility problem and when we have compound operation which we wanted to do atomically.
+Typically volatiles are used for flags generally for boolean or if we are setting the value directly without
+checking the initial or the previous value of that we can use the volatile.
+AtomicInteger and AtomicLong used for maintaining counters which are updated by multiple threads.
+AtomicReference typically used for caches(building new cache in background and replacing dynamically) and non-blocking algorithm
+-- Reason for atomic -----
+Because are cpu has multiple cores or because we can never be sure about the jvm scheduling our threads it is possible
+that instructions of these two threads are interleaved so the read operation of thread 1 is
+followed by read operation by thread 2.
+
+ThreadPool
+----------
+Java Thread pool represents a group of worker threads that are waiting for the job and reuse many times.
+A thread from the thread pool is pulled out and assigned a job by the service provider.
+
+ThreadLocal
+----------
+As memory is shared between different threads , thread local provides a way to store and retrieve values for each thread separately.
+Implementation of thread local store and retrieve the values for each thread independently such that when thread A stores the value A1
+and thread B stores the value B1 in the same instance of thread local. , thread A later on retrieves value A1 from this threadLocal and
+Thread B retrieve value B1.
+To create instances just specific to a thread which helps in having memory efficiency and also thread safe.
+
+per thread instance for memory efficiency and thread safety
+Since Object is no more shared there is no requirement of Synchronization which can improve scalability and performance of application
+When you want to pass or share object/information of an user from one component another in an application with thread safety
+and preserving data consistency.
+
+public class UserContextHolder{
+ThreadLocal<User> holder = new ThreadLocal();
+}
+class Service1{
+ public void process(){
+    User user = getUser();
+    UserContextHolder.holder.set(User);
+ }
+}
+class Service2{
+ public void process(){
+    User user = UserContextHolder.holder.get(); //get user from this thread
+ }
+}
+
+CountDownLatch
+--------------
+Consider a scenario when you want to perform some dependent service to done before the main program get started or dont proceed further
+until dependent service gets completed.
+
+main(String[] args){
+ExecutorService executor = Executors.newFixedThreadPool(4);
+CountDownLatch latch = new CountDownLatch(3);
+executor.submit(new DependentService(latch));
+executor.submit(new DependentService(latch));
+executor.submit(new DependentService(latch));
+
+latch.await();
+When count down become zero then main thread can proceed further.
+System.out.println("All dependent service initialized");
+//performed initialized , perform other operation
+
+}
+
+public static class DependentService implements Runnable{
+  private CountDownLatch latch;
+
+  private DependentService(CountDownLatch latch){this.latch = latch;}
+
+  @Override
+  public void run(){
+    //any database initialization
+    latch.countDown();
+    //continue with other operations
+  }
+}
+
+CycleBarrier
+------------
+Let say we have a game and there are three players in the game and we want to repeatedly send a special message to all three players.
+But we want to ensure that we send the special message to all three players at once to avoid any discrimination. the way we do that
+setup a cycle barrier.
+
+main(String[] args){
+ExecutorService executor = Executors.newFixedThreadPool(4);
+CycleBarrier barrier = new CycleBarrier(3);
+executor.submit(new Task(barrier));
+executor.submit(new Task(barrier));
+executor.submit(new Task(barrier));
+Thread.sleep(1000);
+}
+public static class Task implements Runnable{
+  private CycleBarrier barrier;
+  public Task(CyclicBarrier barrier){this.barrier = barrier;}
+
+  @Override
+    public void run(){
+      while(true){
+      try{
+          barrier.await();
+         }catch(){}
+
+      }
+}
+
+- A CountDownLatch can be used only once in a program(until it’s count reaches 0).
+- A CyclicBarrier can be used again and again once all the threads in a barriers is released.
+
+Phaser (CountDownLatch implementation using phaser)
+------
+main(String[] args){
+ExecutorService executor = Executors.newFixedThreadPool(4);
+Phaser phaser = new Phaser(3);
+executor.submit(new DependentService(phaser));
+executor.submit(new DependentService(phaser));
+executor.submit(new DependentService(phaser));
+
+phaser.awaitAdvance();
+When count down become zero then main thread can proceed further.
+System.out.println("All dependent service initialized");
+//performed initialized , perform other operation
+
+}
+
+public static class DependentService implements Runnable{
+  private CountDownLatch latch;
+
+  private DependentService(CountDownLatch latch){this.latch = latch;}
+
+  @Override
+  public void run(){
+    //any database initialization
+    phaser.arrive();
+    //continue w/ other operations
+  }
+}
+Methods in Phaser
+1. register - register thread themselves
+2. ArriveAndDeregister - Arrive and then deregister (and continue)
+3. bulkRegister - increase the thread registration at any point of time
+4. forceTerminate - Terminate the phaser
+5. getPhase - get current phase
+6. getArriveParties - get the count of arrived party
+7. isTerminated - check if phaser is terminated
+8. arriveAndAwaitAdvance - Parties can arrive and await for all parties
